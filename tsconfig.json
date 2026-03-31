@@ -1,0 +1,25 @@
+{
+  "include": ["src/**/*.ts"],
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "experimentalDecorators": true,
+
+    "strict": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": false,
+
+    "baseUrl": "./src",
+    "paths": {
+      "@lib/*": ["lib/*"],
+      "@common/*": ["common/*"],
+      "@configs/*": ["configs/*"],
+      "@helpers/*": ["helpers/*"]
+    }
+  },
+  "lib": ["es2015"]
+}
