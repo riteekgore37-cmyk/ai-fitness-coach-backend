@@ -39,13 +39,9 @@ export class ImageProxyController extends BaseController {
       let upstream: globalThis.Response;
 
       try {
-        upstream = await fetch(`https://exercisedb.p.rapidapi.com/image/${imageId}`, {
-          signal: controller.signal,
-          headers: {
-            "x-rapidapi-key": "4a9ebdd34emshc648b9a9e52a127p134e89jsn192c5cbea775",
-            "x-rapidapi-host": "exercisedb.p.rapidapi.com",
-          },
-        });
+        upstream = await fetch(`https://v2.exercisedb.io/image/${imageId}`, {
+  signal: controller.signal,
+      });
       } finally {
         clearTimeout(timeoutId);
       }

@@ -44,12 +44,8 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
                 let upstream;
                 try {
-                    upstream = yield fetch(`https://exercisedb.p.rapidapi.com/image/${imageId}`, {
+                    upstream = yield fetch(`https://v2.exercisedb.io/image/${imageId}`, {
                         signal: controller.signal,
-                        headers: {
-                            "x-rapidapi-key": "4a9ebdd34emshc648b9a9e52a127p134e89jsn192c5cbea775",
-                            "x-rapidapi-host": "exercisedb.p.rapidapi.com",
-                        },
                     });
                 }
                 finally {
