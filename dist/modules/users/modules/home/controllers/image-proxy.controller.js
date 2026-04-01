@@ -97,7 +97,6 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                         return;
                     }
                     if (statusCode >= 400) {
-                        console.error(`[ImageProxy] Upstream ${statusCode} for: ${targetUrl}`);
                         upstream.resume();
                         if (!res.headersSent)
                             res.status(502).json({ error: `Upstream returned ${statusCode}` });
@@ -111,12 +110,10 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                     }
                     upstream.pipe(res);
                     upstream.on("error", (err) => {
-                        console.error("[ImageProxy] Stream error:", err.message);
                         if (!res.headersSent)
                             res.status(500).json({ error: "Stream failed" });
                     });
                 }).on("error", (err) => {
-                    console.error("[ImageProxy] Request error:", err.message);
                     if (!res.headersSent)
                         res.status(500).json({ error: "Failed to reach upstream" });
                 });
