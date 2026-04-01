@@ -39,22 +39,36 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 res.status(400).json({ error: "URL not allowed" });
                 return;
             }
-            yield new Promise((resolve, reject) => {
-                https_1.default.get(url, (upstream) => {
+            const options = {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Referer": "https://exercisedb.io/",
+                },
+            };
+            yield new Promise((resolve) => {
+                https_1.default.get(url, options, (upstream) => {
                     if (!upstream.statusCode || upstream.statusCode >= 400) {
-                        res.status(502).json({ error: "Upstream error" });
+                        console.error(`Upstream returned ${upstream.statusCode} for ${url}`);
+                        res.status(502).json({ error: `Upstream error: ${upstream.statusCode}` });
                         upstream.resume();
                         return resolve();
                     }
                     res.setHeader("Content-Type", upstream.headers["content-type"] || "image/jpeg");
-                    res.setHeader("Cache-Control", "public, max-age=604800"); // 7-day browser cache
+                    res.setHeader("Cache-Control", "public, max-age=604800");
                     res.setHeader("Access-Control-Allow-Origin", "*");
                     upstream.pipe(res);
                     upstream.on("end", resolve);
-                    upstream.on("error", reject);
+                    upstream.on("error", (err) => {
+                        console.error("Upstream stream error:", err);
+                        resolve();
+                    });
                 }).on("error", (err) => {
-                    console.error("Image proxy error:", err);
-                    res.status(500).json({ error: "Failed to fetch image" });
+                    console.error("Image proxy fetch error:", err);
+                    if (!res.headersSent) {
+                        res.status(500).json({ error: "Failed to fetch image" });
+                    }
                     resolve();
                 });
             });
