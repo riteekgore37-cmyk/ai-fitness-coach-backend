@@ -28,15 +28,11 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 res.status(400).json({ error: "url query param is required" });
                 return;
             }
-            if (!url.startsWith("https://v2.exercisedb.io/image/")) {
-                res.status(400).json({ error: "Only v2.exercisedb.io image URLs are allowed" });
-                return;
-            }
-            // Extract image ID from CDN URL
-            // e.g. "https://v2.exercisedb.io/image/86856" → "86856"
-            const imageId = url.split("/").pop();
-            if (!imageId) {
-                res.status(400).json({ error: "Could not parse image ID from url" });
+            const allowed = url.startsWith("https://v2.exercisedb.io/image/") ||
+                url.startsWith("https://exercisedb.io/muscles/") ||
+                url.startsWith("https://exercisedb.io/equipment/");
+            if (!allowed) {
+                res.status(400).json({ error: "URL not allowed" });
                 return;
             }
             try {
@@ -44,8 +40,24 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
                 let upstream;
                 try {
-                    upstream = yield fetch(`https://v2.exercisedb.io/image/${imageId}`, {
+                    upstream = yield fetch(url, {
                         signal: controller.signal,
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Accept-Encoding": "gzip, deflate, br",
+                            "Referer": "https://exercisedb.io/",
+                            "Origin": "https://exercisedb.io",
+                            "Sec-Fetch-Dest": "image",
+                            "Sec-Fetch-Mode": "no-cors",
+                            "Sec-Fetch-Site": "same-site",
+                            "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+                            "Sec-Ch-Ua-Mobile": "?0",
+                            "Sec-Ch-Ua-Platform": '"Windows"',
+                            "Cache-Control": "no-cache",
+                            "Pragma": "no-cache",
+                        },
                     });
                 }
                 finally {
@@ -53,7 +65,7 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 }
                 if (!upstream.ok) {
                     res.status(upstream.status).json({
-                        error: `Upstream image CDN returned ${upstream.status}`,
+                        error: `Upstream returned ${upstream.status}`,
                     });
                     return;
                 }
