@@ -2,6 +2,13 @@ import { Request, Response } from "express";
 import { asyncHandler } from "@helpers/async-handler";
 import { BaseController } from "@lib/controllers/controller.base";
 import { Controller } from "@lib/decorators/controller.decorator";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 @Controller("/proxy")
 export class ImageProxyController extends BaseController {
@@ -29,57 +36,30 @@ export class ImageProxyController extends BaseController {
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10_000);
+      // Use the URL path as a stable public_id for caching
+      const publicId = "exercisedb/" + url.replace(/https?:\/\/[^/]+\//, "").replace(/\//g, "_");
 
-      let upstream: globalThis.Response;
-
+      // Check if already cached in Cloudinary
+      let cachedUrl: string;
       try {
-        upstream = await fetch(url, {
-          signal: controller.signal,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "https://exercisedb.io/",
-            "Origin": "https://exercisedb.io",
-            "Sec-Fetch-Dest": "image",
-            "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Site": "same-site",
-            "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-          },
+        const result = await cloudinary.api.resource(publicId);
+        cachedUrl = result.secure_url;
+      } catch {
+        // Not cached yet — upload from source URL
+        const uploaded = await cloudinary.uploader.upload(url, {
+          public_id: publicId,
+          resource_type: "image",
+          overwrite: false,
         });
-      } finally {
-        clearTimeout(timeoutId);
+        cachedUrl = uploaded.secure_url;
       }
 
-      if (!upstream.ok) {
-        res.status(upstream.status).json({
-          error: `Upstream returned ${upstream.status}`,
-        });
-        return;
-      }
-
-      const contentType = upstream.headers.get("content-type") || "image/gif";
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=86400");
-
-      const arrayBuffer = await upstream.arrayBuffer();
-      res.end(Buffer.from(arrayBuffer));
+      // Redirect to Cloudinary CDN — fast, globally cached
+      res.redirect(302, cachedUrl);
 
     } catch (err: any) {
-      if (err?.name === "AbortError") {
-        console.error("Image proxy timeout for:", url);
-        res.status(504).json({ error: "Image fetch timed out" });
-      } else {
-        console.error("Image proxy error:", err);
-        res.status(500).json({ error: "Failed to fetch image" });
-      }
+      console.error("Image proxy error:", err);
+      res.status(500).json({ error: "Failed to fetch image" });
     }
   };
 }
