@@ -47,40 +47,30 @@ export class ImageProxyController extends BaseController {
         if (!res.headersSent) res.status(502).json({ error: "Too many redirects" });
         return;
       }
-
       const lib = targetUrl.startsWith("https") ? https : http;
-
       lib.get(targetUrl, requestOptions, (upstream) => {
         const statusCode = upstream.statusCode ?? 0;
-
         if ([301, 302, 307, 308].includes(statusCode) && upstream.headers.location) {
           upstream.resume();
           makeRequest(upstream.headers.location, redirectCount + 1);
           return;
         }
-
         if (statusCode >= 400) {
-          console.error(`[ImageProxy] Upstream ${statusCode} for: ${targetUrl}`);
           upstream.resume();
           if (!res.headersSent) res.status(502).json({ error: `Upstream returned ${statusCode}` });
           return;
         }
-
-        res.setHeader("Content-Type",                upstream.headers["content-type"] || "image/gif");
-        res.setHeader("Cache-Control",               "public, max-age=2592000");
+        res.setHeader("Content-Type", upstream.headers["content-type"] || "image/gif");
+        res.setHeader("Cache-Control", "public, max-age=2592000");
         res.setHeader("Access-Control-Allow-Origin", "*");
         if (upstream.headers["content-length"]) {
           res.setHeader("Content-Length", upstream.headers["content-length"]);
         }
-
         upstream.pipe(res);
         upstream.on("error", (err) => {
-          console.error("[ImageProxy] Stream error:", err.message);
           if (!res.headersSent) res.status(500).json({ error: "Stream failed" });
         });
-
       }).on("error", (err) => {
-        console.error("[ImageProxy] Request error:", err.message);
         if (!res.headersSent) res.status(500).json({ error: "Failed to reach upstream" });
       });
     };
