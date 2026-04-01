@@ -14,17 +14,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ImageProxyController = void 0;
 const async_handler_1 = require("../../../../../helpers/async-handler");
 const controller_base_1 = require("../../../../../lib/controllers/controller.base");
 const controller_decorator_1 = require("../../../../../lib/decorators/controller.decorator");
-const cloudinary_1 = require("cloudinary");
-cloudinary_1.v2.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const https_1 = __importDefault(require("https"));
 let ImageProxyController = class ImageProxyController extends controller_base_1.BaseController {
     constructor() {
         super(...arguments);
@@ -41,31 +39,25 @@ let ImageProxyController = class ImageProxyController extends controller_base_1.
                 res.status(400).json({ error: "URL not allowed" });
                 return;
             }
-            try {
-                // Use the URL path as a stable public_id for caching
-                const publicId = "exercisedb/" + url.replace(/https?:\/\/[^/]+\//, "").replace(/\//g, "_");
-                // Check if already cached in Cloudinary
-                let cachedUrl;
-                try {
-                    const result = yield cloudinary_1.v2.api.resource(publicId);
-                    cachedUrl = result.secure_url;
-                }
-                catch (_a) {
-                    // Not cached yet — upload from source URL
-                    const uploaded = yield cloudinary_1.v2.uploader.upload(url, {
-                        public_id: publicId,
-                        resource_type: "image",
-                        overwrite: false,
-                    });
-                    cachedUrl = uploaded.secure_url;
-                }
-                // Redirect to Cloudinary CDN — fast, globally cached
-                res.redirect(302, cachedUrl);
-            }
-            catch (err) {
-                console.error("Image proxy error:", err);
-                res.status(500).json({ error: "Failed to fetch image" });
-            }
+            yield new Promise((resolve, reject) => {
+                https_1.default.get(url, (upstream) => {
+                    if (!upstream.statusCode || upstream.statusCode >= 400) {
+                        res.status(502).json({ error: "Upstream error" });
+                        upstream.resume();
+                        return resolve();
+                    }
+                    res.setHeader("Content-Type", upstream.headers["content-type"] || "image/jpeg");
+                    res.setHeader("Cache-Control", "public, max-age=604800"); // 7-day browser cache
+                    res.setHeader("Access-Control-Allow-Origin", "*");
+                    upstream.pipe(res);
+                    upstream.on("end", resolve);
+                    upstream.on("error", reject);
+                }).on("error", (err) => {
+                    console.error("Image proxy error:", err);
+                    res.status(500).json({ error: "Failed to fetch image" });
+                    resolve();
+                });
+            });
         });
     }
     setRoutes() {

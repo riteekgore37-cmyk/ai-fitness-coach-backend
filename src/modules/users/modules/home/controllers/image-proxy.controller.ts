@@ -2,13 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "@helpers/async-handler";
 import { BaseController } from "@lib/controllers/controller.base";
 import { Controller } from "@lib/decorators/controller.decorator";
-import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import https from "https";
 
 @Controller("/proxy")
 export class ImageProxyController extends BaseController {
@@ -35,31 +29,24 @@ export class ImageProxyController extends BaseController {
       return;
     }
 
-    try {
-      // Use the URL path as a stable public_id for caching
-      const publicId = "exercisedb/" + url.replace(/https?:\/\/[^/]+\//, "").replace(/\//g, "_");
-
-      // Check if already cached in Cloudinary
-      let cachedUrl: string;
-      try {
-        const result = await cloudinary.api.resource(publicId);
-        cachedUrl = result.secure_url;
-      } catch {
-        // Not cached yet — upload from source URL
-        const uploaded = await cloudinary.uploader.upload(url, {
-          public_id: publicId,
-          resource_type: "image",
-          overwrite: false,
-        });
-        cachedUrl = uploaded.secure_url;
-      }
-
-      // Redirect to Cloudinary CDN — fast, globally cached
-      res.redirect(302, cachedUrl);
-
-    } catch (err: any) {
-      console.error("Image proxy error:", err);
-      res.status(500).json({ error: "Failed to fetch image" });
-    }
+    await new Promise<void>((resolve, reject) => {
+      https.get(url, (upstream) => {
+        if (!upstream.statusCode || upstream.statusCode >= 400) {
+          res.status(502).json({ error: "Upstream error" });
+          upstream.resume();
+          return resolve();
+        }
+        res.setHeader("Content-Type", upstream.headers["content-type"] || "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=604800"); // 7-day browser cache
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        upstream.pipe(res);
+        upstream.on("end", resolve);
+        upstream.on("error", reject);
+      }).on("error", (err) => {
+        console.error("Image proxy error:", err);
+        res.status(500).json({ error: "Failed to fetch image" });
+        resolve();
+      });
+    });
   };
 }
