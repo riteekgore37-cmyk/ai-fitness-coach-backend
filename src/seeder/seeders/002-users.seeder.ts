@@ -10,8 +10,35 @@ import { IUser, User } from "@common/models/user.model";
 import { seederWrapper } from "seeder/helpers/seeder-wrapper";
 
 export default seederWrapper(User, async () => {
+  // 10 users
+  await Promise.all(Array.from({ length: 10 }, (_, i) => i).map(async function (i) {
+    const o: IUser = {
+      name: `User ${i}`,
+      email: `user-${i}@app.com`,
+      password: "password",
+      image: `https://placehold.co/300x400`,
+      gender: (i as number % 2 === 0) ?
+        Gender.MALE :
+        Gender.FEMALE,
+      height: 170,
+      weight: 70,
+      fitness_level: [FitnessLevel.BEGINNER, FitnessLevel.INTERMEDIATE, FitnessLevel.ADVANCED][i % 3],
+      preferences: {
+        fitness_goal: [FitnessGoal.LOSE_WEIGHT, FitnessGoal.GAIN_MUSCLE, FitnessGoal.GET_FITTER][i % 3],
+        target_weight: 60,
+        workout_frequency: 3,
+        preferred_days: [PreferredDay.MONDAY, PreferredDay.TUESDAY, PreferredDay.WEDNESDAY],
+        workout_place: [WorkoutPlace.GYM, WorkoutPlace.HOME, WorkoutPlace.BOTH][i % 3],
+        preferred_equipment: [[PreferredEquipment.BARBELLS, PreferredEquipment.DUMBBELLS, PreferredEquipment.GYM_MACHINES, PreferredEquipment.RESISTANCE_BAND, PreferredEquipment.BODYWEIGHT][i % 5]],
+      },
+      injuries: [[Injury.ARMS, Injury.BACK, Injury.NECK, Injury.SHOULDERS, Injury.KNEES][i % 5]],
+      dob: new Date(1990, 1, 1),
+      role: AuthenticatableType.USER,
+    };
+    await User.create(o);
+  }));
 
-  // User 1 — Riteek (your main test user)
+  // Fixed test user (always available after seed:reset)
   await User.create({
     name: "Riteek Gore",
     email: "riteek@gmail.com",
@@ -33,75 +60,4 @@ export default seederWrapper(User, async () => {
     dob: new Date(2000, 1, 1),
     role: AuthenticatableType.USER,
   });
-
-  // User 2
-  await User.create({
-    name: "User Two",
-    email: "user2@app.com",
-    password: "password",
-    image: "https://placehold.co/300x400",
-    gender: Gender.FEMALE,
-    height: 165,
-    weight: 60,
-    fitness_level: FitnessLevel.BEGINNER,
-    preferences: {
-      fitness_goal: FitnessGoal.LOSE_WEIGHT,
-      target_weight: 55,
-      workout_frequency: 3,
-      preferred_days: [PreferredDay.TUESDAY, PreferredDay.THURSDAY],
-      workout_place: WorkoutPlace.HOME,
-      preferred_equipment: [PreferredEquipment.BODYWEIGHT],
-    },
-    injuries: [],
-    dob: new Date(1998, 5, 15),
-    role: AuthenticatableType.USER,
-  });
-
-  // User 3
-  await User.create({
-    name: "User Three",
-    email: "user3@app.com",
-    password: "password",
-    image: "https://placehold.co/300x400",
-    gender: Gender.MALE,
-    height: 175,
-    weight: 80,
-    fitness_level: FitnessLevel.ADVANCED,
-    preferences: {
-      fitness_goal: FitnessGoal.GET_FITTER,
-      target_weight: 75,
-      workout_frequency: 5,
-      preferred_days: [PreferredDay.MONDAY, PreferredDay.TUESDAY, PreferredDay.THURSDAY],
-      workout_place: WorkoutPlace.GYM,
-      preferred_equipment: [PreferredEquipment.BARBELLS],
-    },
-    injuries: [Injury.KNEES],
-    dob: new Date(1995, 3, 20),
-    role: AuthenticatableType.USER,
-  });
-
-  // User 4
-  await User.create({
-    name: "User Four",
-    email: "user4@app.com",
-    password: "password",
-    image: "https://placehold.co/300x400",
-    gender: Gender.FEMALE,
-    height: 160,
-    weight: 55,
-    fitness_level: FitnessLevel.BEGINNER,
-    preferences: {
-      fitness_goal: FitnessGoal.LOSE_WEIGHT,
-      target_weight: 50,
-      workout_frequency: 3,
-      preferred_days: [PreferredDay.WEDNESDAY, PreferredDay.FRIDAY],
-      workout_place: WorkoutPlace.HOME,
-      preferred_equipment: [PreferredEquipment.RESISTANCE_BAND],
-    },
-    injuries: [],
-    dob: new Date(2001, 8, 10),
-    role: AuthenticatableType.USER,
-  });
-
-  console.log("✅ 4 users created");
 });
