@@ -19,7 +19,7 @@ const CATEGORY_GIFS: Record<string, string> = {
 };
 
 async function updateGifs() {
-  await mongoose.connect(process.env.MONGODB_URI!);
+  await mongoose.connect(process.env.DB_URI!);
   console.log("✅ Connected to MongoDB");
 
   for (const [category, imageUrl] of Object.entries(CATEGORY_GIFS)) {
